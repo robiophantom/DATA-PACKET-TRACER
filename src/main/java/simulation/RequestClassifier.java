@@ -19,6 +19,6 @@ public class RequestClassifier {
 
     public static boolean isCriticalDomain(String domain) {
         // Simple check - you can extend this
-        return domain.contains("edu") || domain.contains("intranet");
+        return domain.contains("edu") || domain.contains("intranet") || domain.contains("gov") || domain.contains("net");
     }
 }

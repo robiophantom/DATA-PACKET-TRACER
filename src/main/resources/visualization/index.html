@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,7 +43,7 @@
         }
         .controls h3 {
             margin-top: 0;
-            color: #0074D9;
+            color: #8200d9;
         }
         .controls label {
             display: block;
@@ -55,12 +56,12 @@
             border-radius: 4px;
         }
         .controls button {
-            background-color: #0074D9;
+            background-color: #bb5fef;
             color: white;
             cursor: pointer;
         }
         .controls button:hover {
-            background-color: #005bb5;
+            background-color: #a456ed;
         }
         .stats-table {
             width: 100%;
@@ -74,11 +75,16 @@
             text-align: left;
         }
         .stats-table th {
-            background-color: #0074D9;
+            background-color: #a65ae4;
             color: white;
         }
         .stats-table tr:nth-child(even) {
             background-color: #f9f9f9;
+        }
+        .note {
+            font-size: 12px;
+            color: #555;
+            margin: 5px 0;
         }
     </style>
 </head>
@@ -131,13 +137,14 @@
 
             <h3>Refresh Graph</h3>
             <button onclick="refreshGraphManually()">Refresh Graph</button>
+            <div class="note">Note: Click the button to manually refresh the graph after running SimulationEngine.</div>
 
             <h3>Update Edge Properties</h3>
             <label>Source ID: <input type="text" id="update-edge-source" placeholder="e.g., R1"></label>
             <label>Target ID: <input type="text" id="update-edge-target" placeholder="e.g., R2"></label>
             <label>New Latency: <input type="number" id="update-edge-latency" value="10" min="1"></label>
             <label>New Congestion: <input type="number" id="update-edge-congestion" value="0" min="0"></label>
-            <button onclick="promptSimulationEngine()">Redraw Graph</button>
+            <button onclick="updateEdgeProperties()">Update and Redraw Graph</button>
         </div>
         <table class="stats-table" id="stats-table">
             <thead>
@@ -168,36 +175,75 @@
     const proxyMaxCapacity = 2;
     let lastModifiedTime = 0;
 
+    // Default graph data in case data.json fails to load
+    const defaultGraphData = {
+        elements: [
+            { data: { id: 'R1', label: 'R1', type: 'Lab', priority: 1 } },
+            { data: { id: 'R2', label: 'R2', type: 'Classroom', priority: 2 } },
+            { data: { id: 'Internet', label: 'Internet', type: 'Gateway', priority: 0 } },
+            { data: { source: 'R1', target: 'R2', latency: 10, congestion: 1 } },
+            { data: { source: 'R2', target: 'Internet', latency: 15, congestion: 0 } }
+        ]
+    };
+
     // Initial load of the graph
     fetchGraphData();
 
-    // Poll for changes in data.json every 5 seconds
-    setInterval(checkForGraphUpdates, 5000);
-
     function fetchGraphData() {
+        // Store the current graph data as a fallback
+        const previousGraphData = JSON.parse(JSON.stringify(graphData));
         Promise.all([
-            fetch('data.json', { cache: 'no-store' }),
-            fetch('userGraphData.json', { cache: 'no-store' }).catch(() => ({ ok: false }))
+            fetch('data.json', { cache: 'no-store' })
+                .catch(err => {
+                    console.error('Fetch error for data.json:', err.message);
+                    return { ok: false };
+                }),
+            fetch('userGraphData.json', { cache: 'no-store' })
+                .catch(() => ({ ok: false }))
         ])
             .then(([dataResponse, userDataResponse]) => {
                 if (!dataResponse.ok) {
+                    console.error('Failed to load data.json:', {
+                        status: dataResponse.status || 'N/A',
+                        statusText: dataResponse.statusText || 'No response',
+                        url: 'data.json'
+                    });
+                    alert('Failed to load data.json. Please ensure:\n1. SimulationEngine has been run to generate the file in src/main/resources/visualization/.\n2. The server (server.js) is running on http://localhost:8080.\n3. data.json is accessible at http://localhost:8080/data.json.');
                     throw new Error('Network response was not ok for data.json');
                 }
-                const dataPromise = dataResponse.json();
+                const dataPromise = dataResponse.json().catch(err => {
+                    console.error('Error parsing data.json:', err.message);
+                    throw err;
+                });
                 const userDataPromise = userDataResponse.ok ? userDataResponse.json() : Promise.resolve({ elements: [] });
                 return Promise.all([dataPromise, userDataPromise]);
             })
             .then(([data, userData]) => {
                 graphData = data;
                 userGraphData = userData;
+                console.log('Loaded graphData:', graphData);
+                console.log('Loaded userGraphData:', userGraphData);
                 mergeGraphData();
-                initializeGraph();
-                updateSourceRouterOptions();
-                lastModifiedTime = Date.now();
+                // Only reinitialize the graph if there are elements to display
+                if (graphData.elements && graphData.elements.length > 0) {
+                    initializeGraph();
+                    updateSourceRouterOptions();
+                    lastModifiedTime = Date.now();
+                } else {
+                    console.warn('No elements to display after fetching data. Reverting to previous graph.');
+                    graphData = previousGraphData;
+                    alert('No valid data to display. Reverting to previous graph state.');
+                }
             })
             .catch(error => {
                 console.error('Error loading graph data:', error);
+                // Revert to previous graph data instead of default
+                graphData = previousGraphData;
+                userGraphData = { elements: [] };
+                mergeGraphData();
                 initializeGraph();
+                updateSourceRouterOptions();
+                alert('Failed to load new graph data. Reverted to previous graph state. Check the console for details.');
             });
     }
 
@@ -218,6 +264,7 @@
         });
 
         graphData.elements = mergedElements;
+        console.log('Merged graphData:', graphData);
     }
 
     function checkForGraphUpdates() {
@@ -240,13 +287,78 @@
                 if (lastModified > lastModifiedTime) {
                     fetchGraphData();
                 } else {
-                    alert('Run the SimulationEngine if you want to update the graph.');
+                    alert('No updates to data.json. Run the SimulationEngine if you want to update the graph.');
                 }
             })
             .catch(error => {
                 console.error('Error checking for updates:', error);
-                alert('Error checking for updates. Please try again.');
+                alert('Error checking for updates. Please ensure the server is running and data.json is accessible.');
             });
+    }
+
+    function updateEdgeProperties() {
+        const source = document.getElementById('update-edge-source').value.trim();
+        const target = document.getElementById('update-edge-target').value.trim();
+        const newLatency = parseInt(document.getElementById('update-edge-latency').value);
+        const newCongestion = parseInt(document.getElementById('update-edge-congestion').value);
+
+        if (!source || !target) {
+            alert('Please enter both Source and Target IDs.');
+            return;
+        }
+
+        if (source === target) {
+            alert('Source and Target cannot be the same.');
+            return;
+        }
+
+        // Check if the edge exists in either graphData or userGraphData
+        let edgeExists = false;
+        let edgeIndex = -1;
+
+        // Check graphData
+        edgeIndex = graphData.elements.findIndex(el =>
+            el.data && el.data.source === source && el.data.target === target
+        );
+        if (edgeIndex !== -1) {
+            edgeExists = true;
+        } else {
+            // Check userGraphData
+            edgeIndex = userGraphData.elements.findIndex(el =>
+                el.data && el.data.source === source && el.data.target === target
+            );
+            if (edgeIndex !== -1) {
+                edgeExists = true;
+            }
+        }
+
+        if (!edgeExists) {
+            alert('Edge does not exist. Please add the edge first.');
+            return;
+        }
+
+        // Update the edge properties
+        const updatedEdge = {
+            data: { source, target, latency: newLatency, congestion: newCongestion }
+        };
+
+        // If the edge is in userGraphData, update it there; otherwise, add to userGraphData
+        if (userGraphData.elements.some(el => el.data && el.data.source === source && el.data.target === target)) {
+            userGraphData.elements[edgeIndex] = updatedEdge;
+        } else {
+            userGraphData.elements.push(updatedEdge);
+        }
+
+        // Save the updated userGraphData
+        saveUserGraphData();
+
+        // Update graphData by merging
+        mergeGraphData();
+
+        // Redraw the graph
+        initializeGraph();
+
+        alert('Edge properties updated and graph redrawn.');
     }
 
     function addRouter() {
@@ -450,6 +562,8 @@
             var edge = evt.target;
             alert('Edge: ' + edge.data('source') + ' -> ' + edge.data('target') + '\nLatency: ' + edge.data('latency') + '\nCongestion: ' + edge.data('congestion'));
         });
+
+        console.log('Graph initialized with', cy.nodes().length, 'nodes and', cy.edges().length, 'edges');
     }
 
     function updateSourceRouterOptions() {
@@ -463,10 +577,6 @@
                 option.text = `${el.data.id} (${el.data.type})`;
                 select.appendChild(option);
             });
-    }
-
-    function promptSimulationEngine() {
-        alert('Run the SimulationEngine if you want to update the graph.');
     }
 
     function simulateRequest() {

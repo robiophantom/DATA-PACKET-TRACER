@@ -2,24 +2,6 @@
   "elements": [
     {
       "data": {
-        "source": "R8",
-        "target": "R2",
-        "latency": 10,
-        "congestion": 3,
-        "id": "95b97267-6d49-4e78-b159-ebcc5427307a"
-      }
-    },
-    {
-      "data": {
-        "source": "R4",
-        "target": "R2",
-        "latency": 12,
-        "congestion": 2,
-        "id": "9c64f39e-a6fc-4bcd-8534-b5880fe90b77"
-      }
-    },
-    {
-      "data": {
         "id": "R7",
         "label": "R7",
         "type": "Lab",
@@ -28,45 +10,34 @@
     },
     {
       "data": {
-        "source": "R7",
-        "target": "R1",
-        "latency": 10,
-        "congestion": 1,
-        "id": "06bee621-2772-4462-b9e1-2c283b7ea262"
+        "id": "R6",
+        "label": "R6",
+        "type": "Classroom",
+        "priority": 2
       }
     },
     {
       "data": {
-        "id": "R9",
-        "label": "R9",
-        "type": "Server",
-        "priority": 1
+        "id": "R1",
+        "label": "R1",
+        "type": "Classroom",
+        "priority": 2
       }
     },
     {
       "data": {
-        "source": "R8",
-        "target": "R5",
-        "latency": 10,
-        "congestion": 1,
-        "id": "242f05fa-7cc7-4a18-9ed6-c0478bf7058b"
+        "id": "R8",
+        "label": "R8",
+        "type": "Admin",
+        "priority": 3
       }
     },
     {
       "data": {
-        "source": "R9",
+        "source": "R1",
         "target": "R2",
         "latency": 10,
-        "congestion": 0,
-        "id": "0a5c9972-0fd6-46fa-b4cc-7f9835a8dd61"
-      }
-    },
-    {
-      "data": {
-        "id": "R4",
-        "label": "R4",
-        "type": "Lab",
-        "priority": 1
+        "congestion": 0
       }
     }
   ]
