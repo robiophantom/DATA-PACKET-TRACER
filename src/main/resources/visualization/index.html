@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Traffic Manager - Network Visualization</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+        }
+        .left-panel {
+            width: 40%;
+            padding: 20px;
+            background-color: #f5f7fa;
+            overflow-y: auto;
+        }
+        .right-panel {
+            width: 60%;
+            padding: 20px;
+            background-color: #e8eef4;
+        }
+        #cy {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #e8eef4;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .controls h3 {
+            margin-top: 0;
+            color: #0074D9;
+        }
+        .controls label {
+            display: block;
+            margin: 5px 0;
+        }
+        .controls input, .controls select, .controls button {
+            margin: 5px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .controls button {
+            background-color: #0074D9;
+            color: white;
+            cursor: pointer;
+        }
+        .controls button:hover {
+            background-color: #005bb5;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .stats-table th, .stats-table td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        .stats-table th {
+            background-color: #0074D9;
+            color: white;
+        }
+        .stats-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="left-panel">
+        <h1>Smart Traffic Manager Network</h1>
+        <div class="controls">
+            <h3>Add Router</h3>
+            <label>Router ID: <input type="text" id="add-router-id" placeholder="e.g., R7"></label>
+            <label>Type: <select id="add-router-type">
+                <option value="Lab">Lab</option>
+                <option value="Classroom">Classroom</option>
+                <option value="Library">Library</option>
+                <option value="Cafeteria">Cafeteria</option>
+                <option value="Admin">Admin</option>
+                <option value="DataCenter">DataCenter</option>
+                <option value="Server">Server</option>
+            </select></label>
+            <label>Priority: <input type="number" id="add-router-priority" value="1" min="0"></label>
+            <button onclick="addRouter()">Add Router</button>
+
+            <h3>Add Edge</h3>
+            <label>Source ID: <input type="text" id="add-edge-source" placeholder="e.g., R1"></label>
+            <label>Target ID: <input type="text" id="add-edge-target" placeholder="e.g., R2"></label>
+            <label>Latency: <input type="number" id="add-edge-latency" value="10" min="1"></label>
+            <label>Congestion: <input type="number" id="add-edge-congestion" value="0" min="0"></label>
+            <button onclick="addEdge()">Add Edge</button>
+
+            <h3>Simulate Request</h3>
+            <label>Source Router: <select id="sim-source">
+                <option value="R1">R1 (Lab)</option>
+                <option value="R5">R5 (Admin)</option>
+                <option value="R6">R6 (DataCenter)</option>
+            </select></label>
+            <label>User Type: <select id="sim-user-type">
+                <option value="Student">Student</option>
+                <option value="Staff">Staff</option>
+            </select></label>
+            <label>Domain: <select id="sim-domain">
+                <option value="facebook.com">facebook.com</option>
+                <option value="intranet.edu">intranet.edu</option>
+                <option value="youtube.com">youtube.com</option>
+                <option value="reddit.com">reddit.com</option>
+                <option value="netflix.com">netflix.com</option>
+                <option value="email.edu">email.edu</option>
+                <option value="twitch.tv">twitch.tv</option>
+            </select></label>
+            <button onclick="simulateRequest()">Send Request</button>
+
+            <h3>Refresh Graph</h3>
+            <button onclick="refreshGraphManually()">Refresh Graph</button>
+
+            <h3>Update Edge Properties</h3>
+            <label>Source ID: <input type="text" id="update-edge-source" placeholder="e.g., R1"></label>
+            <label>Target ID: <input type="text" id="update-edge-target" placeholder="e.g., R2"></label>
+            <label>New Latency: <input type="number" id="update-edge-latency" value="10" min="1"></label>
+            <label>New Congestion: <input type="number" id="update-edge-congestion" value="0" min="0"></label>
+            <button onclick="promptSimulationEngine()">Redraw Graph</button>
+        </div>
+        <table class="stats-table" id="stats-table">
+            <thead>
+            <tr>
+                <th>Source</th>
+                <th>User Type</th>
+                <th>Domain</th>
+                <th>Path</th>
+                <th>Total Latency</th>
+                <th>Total Congestion</th>
+                <th>Proxy Status</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="right-panel">
+        <div id="cy"></div>
+    </div>
+</div>
+
+<script>
+    let cy;
+    let graphData = { elements: [] };
+    let userGraphData = { elements: [] };
+    let proxyCache = new Set(['intranet.edu']);
+    let proxyLoad = 0;
+    const proxyMaxCapacity = 2;
+    let lastModifiedTime = 0;
+
+    // Initial load of the graph
+    fetchGraphData();
+
+    // Poll for changes in data.json every 5 seconds
+    setInterval(checkForGraphUpdates, 5000);
+
+    function fetchGraphData() {
+        Promise.all([
+            fetch('data.json', { cache: 'no-store' }),
+            fetch('userGraphData.json', { cache: 'no-store' }).catch(() => ({ ok: false }))
+        ])
+            .then(([dataResponse, userDataResponse]) => {
+                if (!dataResponse.ok) {
+                    throw new Error('Network response was not ok for data.json');
+                }
+                const dataPromise = dataResponse.json();
+                const userDataPromise = userDataResponse.ok ? userDataResponse.json() : Promise.resolve({ elements: [] });
+                return Promise.all([dataPromise, userDataPromise]);
+            })
+            .then(([data, userData]) => {
+                graphData = data;
+                userGraphData = userData;
+                mergeGraphData();
+                initializeGraph();
+                updateSourceRouterOptions();
+                lastModifiedTime = Date.now();
+            })
+            .catch(error => {
+                console.error('Error loading graph data:', error);
+                initializeGraph();
+            });
+    }
+
+    function mergeGraphData() {
+        const mergedElements = [...graphData.elements];
+        const existingNodeIds = new Set(mergedElements.filter(el => el.data.id).map(el => el.data.id));
+        const existingEdges = new Set(mergedElements.filter(el => el.data.source && el.data.target)
+            .map(el => `${el.data.source}-${el.data.target}`));
+
+        userGraphData.elements.forEach(element => {
+            if (element.data.id && !existingNodeIds.has(element.data.id)) {
+                mergedElements.push(element);
+                existingNodeIds.add(element.data.id);
+            } else if (element.data.source && element.data.target && !existingEdges.has(`${element.data.source}-${element.data.target}`)) {
+                mergedElements.push(element);
+                existingEdges.add(`${element.data.source}-${element.data.target}`);
+            }
+        });
+
+        graphData.elements = mergedElements;
+    }
+
+    function checkForGraphUpdates() {
+        fetch('data.json', { method: 'HEAD' })
+            .then(response => {
+                const lastModified = new Date(response.headers.get('Last-Modified')).getTime();
+                if (lastModified > lastModifiedTime) {
+                    fetchGraphData();
+                }
+            })
+            .catch(error => {
+                console.error('Error checking for updates:', error);
+            });
+    }
+
+    function refreshGraphManually() {
+        fetch('data.json', { method: 'HEAD' })
+            .then(response => {
+                const lastModified = new Date(response.headers.get('Last-Modified')).getTime();
+                if (lastModified > lastModifiedTime) {
+                    fetchGraphData();
+                } else {
+                    alert('Run the SimulationEngine if you want to update the graph.');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking for updates:', error);
+                alert('Error checking for updates. Please try again.');
+            });
+    }
+
+    function addRouter() {
+        const id = document.getElementById('add-router-id').value.trim();
+        const type = document.getElementById('add-router-type').value;
+        const priority = parseInt(document.getElementById('add-router-priority').value);
+
+        if (!id) {
+            alert('Please enter a Router ID.');
+            return;
+        }
+
+        if (graphData.elements.some(el => el.data.id === id)) {
+            alert('Router ID already exists.');
+            return;
+        }
+
+        const newNode = {
+            data: { id, label: id, type, priority }
+        };
+        userGraphData.elements.push(newNode);
+        saveUserGraphData();
+        graphData.elements.push(newNode);
+        initializeGraph();
+        updateSourceRouterOptions();
+        alert('Router added. Rerun SimulationEngine to include this in the simulation.');
+    }
+
+    function addEdge() {
+        const source = document.getElementById('add-edge-source').value.trim();
+        const target = document.getElementById('add-edge-target').value.trim();
+        const latency = parseInt(document.getElementById('add-edge-latency').value);
+        const congestion = parseInt(document.getElementById('add-edge-congestion').value);
+
+        if (!source || !target) {
+            alert('Please enter both Source and Target IDs.');
+            return;
+        }
+
+        if (source === target) {
+            alert('Source and Target cannot be the same.');
+            return;
+        }
+
+        const sourceExists = graphData.elements.some(el => el.data.id === source);
+        const targetExists = graphData.elements.some(el => el.data.id === target);
+        if (!sourceExists || !targetExists) {
+            alert('Source or Target router does not exist.');
+            return;
+        }
+
+        if (graphData.elements.some(el => el.data.source === source && el.data.target === target)) {
+            alert('Edge already exists.');
+            return;
+        }
+
+        const newEdge = {
+            data: { source, target, latency, congestion }
+        };
+        userGraphData.elements.push(newEdge);
+        saveUserGraphData();
+        graphData.elements.push(newEdge);
+        initializeGraph();
+        alert('Edge added. Rerun SimulationEngine to include this in the simulation.');
+    }
+
+    function saveUserGraphData() {
+        fetch('saveUserGraphData', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userGraphData)
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to save user graph data');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving user graph data:', error);
+                alert('Failed to save user graph data. Changes may not persist.');
+            });
+    }
+
+    function initializeGraph() {
+        if (cy) {
+            cy.destroy();
+        }
+        cy = cytoscape({
+            container: document.getElementById('cy'),
+            elements: graphData.elements,
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': '#0074D9',
+                        'label': 'data(label)',
+                        'color': '#fff',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'width': '40px',
+                        'height': '40px'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 3,
+                        'line-color': '#ccc',
+                        'target-arrow-color': '#ccc',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                        'label': 'data(latency)',
+                        'text-rotation': 'autorotate',
+                        'font-size': '12px'
+                    }
+                },
+                {
+                    selector: 'edge[congestion > 2]',
+                    style: {
+                        'line-color': '#FF4136',
+                        'width': 6
+                    }
+                },
+                {
+                    selector: 'edge.active',
+                    style: {
+                        'line-color': '#0074D9',
+                        'width': 8,
+                        'target-arrow-color': '#0074D9'
+                    }
+                },
+                {
+                    selector: 'node[type="Gateway"]',
+                    style: {
+                        'background-color': '#FF4136',
+                        'shape': 'star'
+                    }
+                },
+                {
+                    selector: 'node[type="Lab"]',
+                    style: {
+                        'background-color': '#2ECC40'
+                    }
+                },
+                {
+                    selector: 'node[type="Classroom"]',
+                    style: {
+                        'background-color': '#FFDC00'
+                    }
+                },
+                {
+                    selector: 'node[type="Library"]',
+                    style: {
+                        'background-color': '#7FDBFF'
+                    }
+                },
+                {
+                    selector: 'node[type="Cafeteria"]',
+                    style: {
+                        'background-color': '#F012BE'
+                    }
+                },
+                {
+                    selector: 'node[type="Admin"]',
+                    style: {
+                        'background-color': '#85144b'
+                    }
+                },
+                {
+                    selector: 'node[type="DataCenter"]',
+                    style: {
+                        'background-color': '#001f3f',
+                        'shape': 'rectangle'
+                    }
+                },
+                {
+                    selector: 'node[type="Server"]',
+                    style: {
+                        'background-color': '#3D9970',
+                        'shape': 'diamond'
+                    }
+                }
+            ],
+            layout: {
+                name: 'cose',
+                idealEdgeLength: 150,
+                nodeOverlap: 20,
+                fit: true,
+                padding: 30
+            }
+        });
+
+        cy.on('tap', 'node', function(evt) {
+            var node = evt.target;
+            alert('Node: ' + node.data('id') + '\nType: ' + node.data('type') + '\nPriority: ' + node.data('priority'));
+        });
+
+        cy.on('tap', 'edge', function(evt) {
+            var edge = evt.target;
+            alert('Edge: ' + edge.data('source') + ' -> ' + edge.data('target') + '\nLatency: ' + edge.data('latency') + '\nCongestion: ' + edge.data('congestion'));
+        });
+    }
+
+    function updateSourceRouterOptions() {
+        const select = document.getElementById('sim-source');
+        select.innerHTML = '';
+        graphData.elements
+            .filter(el => el.data && el.data.id && el.data.type !== 'Gateway')
+            .forEach(el => {
+                const option = document.createElement('option');
+                option.value = el.data.id;
+                option.text = `${el.data.id} (${el.data.type})`;
+                select.appendChild(option);
+            });
+    }
+
+    function promptSimulationEngine() {
+        alert('Run the SimulationEngine if you want to update the graph.');
+    }
+
+    function simulateRequest() {
+        const sourceId = document.getElementById('sim-source').value;
+        const userType = document.getElementById('sim-user-type').value;
+        const domain = document.getElementById('sim-domain').value;
+
+        const sourceNode = graphData.elements.find(el => el.data && el.data.id === sourceId);
+        if (!sourceNode) {
+            alert('Source router no longer exists in the graph.');
+            return;
+        }
+        const routerType = sourceNode.data.type;
+
+        let penalty = 0;
+        if (userType === 'Student') penalty += 2;
+        if (userType === 'Staff' && !domain.includes('.edu')) penalty += 5;
+        if (!domain.includes('edu') && !domain.includes('intranet')) penalty += 3;
+
+        const path = findShortestPath(sourceId, 'Internet', penalty);
+        if (!path.length) {
+            alert('No path found to Internet.');
+            return;
+        }
+
+        let totalLatency = 0;
+        let totalCongestion = 0;
+        const pathEdges = [];
+        for (let i = 0; i < path.length - 1; i++) {
+            const edge = graphData.elements.find(el =>
+                el.data && el.data.source === path[i] && el.data.target === path[i + 1]
+            );
+            if (edge) {
+                totalLatency += edge.data.latency;
+                totalCongestion += edge.data.congestion;
+                pathEdges.push(edge);
+            }
+        }
+
+        let proxyStatus;
+        const isStudentInClassroomOrLab = userType === 'Student' &&
+            (routerType === 'Classroom' || routerType === 'Lab') &&
+            domain === 'intranet.edu';
+        if (isStudentInClassroomOrLab) {
+            proxyStatus = 'Cache HIT';
+        } else if (proxyCache.has(domain)) {
+            proxyStatus = 'Cache HIT';
+        } else if (proxyLoad >= proxyMaxCapacity) {
+            proxyStatus = 'Overloaded';
+        } else {
+            proxyStatus = 'Cache MISS';
+            proxyCache.add(domain);
+            proxyLoad++;
+        }
+
+        const tbody = document.getElementById('stats-table').querySelector('tbody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+                <td>${sourceId}</td>
+                <td>${userType}</td>
+                <td>${domain}</td>
+                <td>${path.join(' -> ')}</td>
+                <td>${totalLatency}</td>
+                <td>${totalCongestion}</td>
+                <td>${proxyStatus}</td>
+            `;
+        tbody.prepend(row);
+
+        cy.edges().removeClass('active');
+        pathEdges.forEach(edge => {
+            const cyEdge = cy.edges(`[source = "${edge.data.source}"][target = "${edge.data.target}"]`);
+            cyEdge.addClass('active');
+        });
+
+        setTimeout(() => {
+            cy.edges().removeClass('active');
+        }, 3000);
+    }
+
+    function findShortestPath(startId, endId, penalty) {
+        const distances = {};
+        const previous = {};
+        const queue = [];
+        const nodes = graphData.elements.filter(el => el.data && el.data.id).map(el => el.data.id);
+
+        if (!nodes.includes(startId) || !nodes.includes(endId)) {
+            return [];
+        }
+
+        nodes.forEach(id => {
+            distances[id] = Infinity;
+        });
+        distances[startId] = 0;
+        queue.push({ id: startId, cost: 0 });
+
+        while (queue.length) {
+            queue.sort((a, b) => a.cost - b.cost);
+            const current = queue.shift();
+
+            if (current.id === endId) break;
+
+            const edges = graphData.elements.filter(el =>
+                el.data && el.data.source === current.id
+            );
+
+            for (const edge of edges) {
+                const neighborId = edge.data.target;
+                const weight = edge.data.latency + edge.data.congestion + penalty;
+                const newCost = distances[current.id] + weight;
+
+                if (newCost < distances[neighborId]) {
+                    distances[neighborId] = newCost;
+                    previous[neighborId] = current.id;
+                    queue.push({ id: neighborId, cost: newCost });
+                }
+            }
+        }
+
+        const path = [];
+        let step = endId;
+        while (step) {
+            path.unshift(step);
+            step = previous[step];
+        }
+
+        if (path[0] !== startId) return [];
+        return path;
+    }
+</script>
+</body>
+</html>

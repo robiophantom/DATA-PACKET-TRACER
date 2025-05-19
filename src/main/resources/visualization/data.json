@@ -1,0 +1,92 @@
+{
+  "elements": [
+    {
+      "data": {
+        "id": "R2",
+        "label": "R2",
+        "type": "Classroom",
+        "priority": 2
+      }
+    },
+    {
+      "data": {
+        "id": "R3",
+        "label": "R3",
+        "type": "Library",
+        "priority": 3
+      }
+    },
+    {
+      "data": {
+        "id": "R4",
+        "label": "R4",
+        "type": "Cafeteria",
+        "priority": 4
+      }
+    },
+    {
+      "data": {
+        "id": "Internet",
+        "label": "Internet",
+        "type": "Gateway",
+        "priority": 0
+      }
+    },
+    {
+      "data": {
+        "id": "R1",
+        "label": "R1",
+        "type": "Lab",
+        "priority": 1
+      }
+    },
+    {
+      "data": {
+        "latency": 10,
+        "source": "R1",
+        "congestion": 5,
+        "target": "R2"
+      }
+    },
+    {
+      "data": {
+        "latency": 8,
+        "source": "R2",
+        "congestion": 1,
+        "target": "R3"
+      }
+    },
+    {
+      "data": {
+        "latency": 5,
+        "source": "R3",
+        "congestion": 0,
+        "target": "R4"
+      }
+    },
+    {
+      "data": {
+        "latency": 15,
+        "source": "R4",
+        "congestion": 0,
+        "target": "Internet"
+      }
+    },
+    {
+      "data": {
+        "latency": 20,
+        "source": "R1",
+        "congestion": 2,
+        "target": "R3"
+      }
+    },
+    {
+      "data": {
+        "latency": 25,
+        "source": "R2",
+        "congestion": 6,
+        "target": "Internet"
+      }
+    }
+  ]
+}
