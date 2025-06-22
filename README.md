@@ -8,8 +8,6 @@ Traffic Prioritization: Differentiates requests by domain (e.g., .edu) and user 
 
 Load Balancing: Uses Dijkstra’s algorithm considering latency, congestion, and user-based penalties.
 
-Proxy Simulation: Simulates caching with capacity and domain rules.
-
 Interactive Visualization: Displays real-time network status including congestion and routing.
 
 🧩 Project Structure
@@ -57,8 +55,6 @@ Request Handling
 
 Uses Dijkstra’s algorithm to compute optimal path.
 
-Checks proxy cache.
-
 Updates congestion and exports to data.json.
 
 💻 Frontend
@@ -74,7 +70,7 @@ User Interaction
 
 Select router, user type, and domain to simulate.
 
-Path, latency, proxy status, and congestion are shown in a table.
+Path, latency, and congestion are shown in a table.
 
 Blue-highlighted edges for active paths (3 seconds).
 
