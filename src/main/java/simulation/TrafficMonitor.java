@@ -4,11 +4,9 @@ import java.util.List;
 
 public class TrafficMonitor {
     private final RouterGraphManager graphManager;
-    private final int congestionThreshold;
 
     public TrafficMonitor(RouterGraphManager graphManager, int congestionThreshold) {
         this.graphManager = graphManager;
-        this.congestionThreshold = congestionThreshold;
     }
 
     public void applyTrafficToPath(List<String> path) {

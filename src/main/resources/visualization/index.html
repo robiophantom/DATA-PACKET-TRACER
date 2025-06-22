@@ -155,7 +155,6 @@
                 <th>Path</th>
                 <th>Total Latency</th>
                 <th>Total Congestion</th>
-                <th>Proxy Status</th>
             </tr>
             </thead>
             <tbody></tbody>
@@ -616,22 +615,6 @@
             }
         }
 
-        let proxyStatus;
-        const isStudentInClassroomOrLab = userType === 'Student' &&
-            (routerType === 'Classroom' || routerType === 'Lab') &&
-            domain === 'intranet.edu';
-        if (isStudentInClassroomOrLab) {
-            proxyStatus = 'Cache HIT';
-        } else if (proxyCache.has(domain)) {
-            proxyStatus = 'Cache HIT';
-        } else if (proxyLoad >= proxyMaxCapacity) {
-            proxyStatus = 'Overloaded';
-        } else {
-            proxyStatus = 'Cache MISS';
-            proxyCache.add(domain);
-            proxyLoad++;
-        }
-
         const tbody = document.getElementById('stats-table').querySelector('tbody');
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -641,7 +624,6 @@
                 <td>${path.join(' -> ')}</td>
                 <td>${totalLatency}</td>
                 <td>${totalCongestion}</td>
-                <td>${proxyStatus}</td>
             `;
         tbody.prepend(row);
 

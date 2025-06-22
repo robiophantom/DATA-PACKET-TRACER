@@ -39,6 +39,92 @@
         "latency": 10,
         "congestion": 0
       }
+    },
+    {
+      "data": {
+        "source": "R4",
+        "target": "R1",
+        "latency": 10,
+        "congestion": 0,
+        "id": "a71e59ad-b461-48a9-ad32-0a5522db54d9"
+      }
+    },
+    {
+      "data": {
+        "source": "R6",
+        "target": "R5",
+        "latency": 10,
+        "congestion": 0,
+        "id": "42ffe35a-90ea-4951-bc59-a1b688e768de"
+      }
+    },
+    {
+      "data": {
+        "source": "R7",
+        "target": "R6",
+        "latency": 10,
+        "congestion": 0,
+        "id": "3084be59-9c92-4a05-8111-3fd389565af3"
+      }
+    },
+    {
+      "data": {
+        "source": "R8",
+        "target": "R5",
+        "latency": 10,
+        "congestion": 0,
+        "id": "56e4e81f-6016-4a44-846f-9dacabfa2d14"
+      }
+    },
+    {
+      "data": {
+        "id": "R9",
+        "label": "R9",
+        "type": "DataCenter",
+        "priority": 1
+      }
+    },
+    {
+      "data": {
+        "source": "R9",
+        "target": "Internet",
+        "latency": 1,
+        "congestion": 2,
+        "id": "d1545c4a-8449-439f-975d-2abe01024bae"
+      }
+    },
+    {
+      "data": {
+        "id": "R10",
+        "label": "R10",
+        "type": "Library",
+        "priority": 10
+      }
+    },
+    {
+      "data": {
+        "source": "R10",
+        "target": "R5",
+        "latency": 1,
+        "congestion": 0,
+        "id": "84e2b275-598a-4f38-bcc3-ca1ade8e3e79"
+      }
+    },
+    {
+      "data": {
+        "id": "R11",
+        "label": "R11",
+        "type": "Admin",
+        "priority": 3
+      }
+    },
+    {
+      "data": {
+        "source": "R11",
+        "target": "R6",
+        "latency": 1,
+        "congestion": 0
+      }
     }
   ]
 }
